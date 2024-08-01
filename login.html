@@ -139,6 +139,14 @@
           loginAndRegister(e, "login");
         }
       );
+
+      // 按下enter键提交
+      document.querySelector(".form").addEventListener("keydown", function (e) {
+          if (e.keyCode === 13) {
+            console.log("enter");
+            loginAndRegister(e, "login");
+          }
+        });
     </script>
     <!-- <script>
 

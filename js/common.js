@@ -1,5 +1,24 @@
 axios.defaults.baseURL = 'https://hmajax.itheima.net/';
 
+// 请求拦截器
+axios.interceptors.request.use(config => {
+  // 获取token
+  const token = localStorage.getItem('token');
+  // 判断token是否存在
+  if (token) {
+    // 如果存在，设置token
+    config.headers.Authorization = token;
+  }
+  return config;
+}, err => Promise.reject(err));
+
+// 跳转到首页
+function toRoute(url, time = 1000) {
+  setTimeout(() => {
+    location.href = url;
+  }, time)
+}
+
 // message提示
 function showToast(message) {
   // 获取toast元素
@@ -12,13 +31,12 @@ function showToast(message) {
   toast.show();
 };
 
+
 // 登录注册
 async function loginAndRegister(event, url = 'login' || 'register') {
-
   // 收集fome 数据
   const formDom = document.querySelector('.form');
   const data = serialize(formDom, { empty: true, hash: true });
-
   console.log(data);
 
   // 长度校验
@@ -38,71 +56,64 @@ async function loginAndRegister(event, url = 'login' || 'register') {
     // message提示
     showToast(message);
 
-    console.log(token.length);
     if (token) {
       // 存储token 和 用户名
-      document.cookie = `token=${token}`;
+      localStorage.setItem('token', token);
       localStorage.setItem('username', username);
 
-      // 跳转页面
-      setTimeout(() => {
-        location.href = './index.html';
-      }, 1500);
+      // 跳转页面(参数延迟单位毫秒)
+      // toRoute('./index.html', 1500);
     }
   } catch (error) {
     showToast(error.response.data.message);
   }
 }
 
-// 使用一个函数来发送异步请求验证Token
-async function validateToken(token) {
-  // 假设有一个API端点用于验证token
-  const response = await fetch('/api/validateToken', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ token }),
-  });
 
-  if (!response.ok) {
-    throw new Error('Token验证失败');
+// 获取仪表盘数据
+async function getDashboard() {
+  try {
+    // {config,data,headers,request,status,statusText,}  
+    const { data: { data: { overview } } } = await axios({
+      method: "GET",
+      url: 'dashboard',
+      // headers: { Authorization: 'breeze_test' }
+    })
+
+    // 渲染数据
+    console.log(overview);
+    Object.keys(overview).forEach(key => {
+      console.log(key, overview[key]);
+      document.querySelector(`.${key}`).innerText = overview[key];
+    })
+
+  } catch (error) {
+    // token无效
+    if (error.response.status === 401) {
+      showToast('请重新登录');
+      // 清除token
+      console.log('退出登录');
+      localStorage.removeItem('token');
+      // 跳转页面(参数延迟单位毫秒)
+      // toRoute('./login.html', 1500);
+    }
   }
-
-  return response.json(); // 假设返回包含token信息的JSON
 }
+
 
 // 登录状态检测
 async function checkLogin() {
-  try {
-    // 获取cookie中的token(不包含'token=')
-    const token = document.cookie.split(';').find((c) => c.trim().startsWith('token='));
-    if (token) {
-      showToast('用户已登录');
-      return;
-    }
-    
-    showToast('用户未登录');
-    setTimeout(() => {
-      location.href = './login.html';
-    }, 3500);
-
-    // 验证token的有效性
-    // const tokenInfo = await validateToken(token);
-    // if (!tokenInfo.valid) {
-    //   // 如果token无效，重定向到登录页面
-    //   location.href = './login.html';
-    // } else {
-    //   // 如果token有效，可以继续执行需要登录态的操作
-    //   showToast('用户已登录');
-    // }
-  } catch (error) {
-    // 捕获并处理可能的错误，例如网络问题或服务器错误
-    console.error('检查登录状态时发生错误:', error.message);
-    // 根据错误情况决定是否重定向到登录页面或显示错误信息
-    location.href = './login.html';
+  if (localStorage.getItem('token')) {
+    // 获取仪表盘数据(token无效会退出登录)
+    getDashboard();
+    return;
   }
+
+  showToast('用户未登录');
+  // 跳转页面(参数延迟单位毫秒)
+  // toRoute('./login.html', 1500);
 }
+
 
 // 用户名渲染
 function renderUsername() {
@@ -111,9 +122,11 @@ function renderUsername() {
   document.querySelector('#user').innerText = username;
 };
 
+
 // 提出登录
 function logout() {
-  localStorage.removeItem('username');// 删除本地存储的用户名
-  document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  // 删除本地存储的用户名和token
+  localStorage.removeItem('username');
+  localStorage.removeItem('token');
   location.href = './login.html';
 }
