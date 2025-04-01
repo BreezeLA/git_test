@@ -1,2 +1,2 @@
-import "./components/Common";
+import "./components/com.js";
 console.log(test);
