@@ -1,2 +1,2 @@
-import "./Components/Common";
+import "./components/Common";
 console.log(test);
